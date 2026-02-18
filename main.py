@@ -4,45 +4,74 @@ import asyncio
 
 selection: list[str] = []
 times: list[float] = []
+collects: list[bool] = []
+dump_times: list[float] = []
 
 @ui.refreshable
 def autoList():
-    global selection
     with ui.list().classes('w-full'):
         sumTime = 0
-        for s, t in list(zip(selection, times)):
-            sumTime += t
+        for s, t, c, d, idx in list(zip(selection, times, collects, dump_times, range(len(selection)))):
+            sumTime += t + d
             with ui.item():
                 with ui.item_section():
                     ui.item_label(s)
+                if s.startswith('Collect'):
+                    with ui.item_section():
+                        i = idx
+                        ui.checkbox(value=c, on_change=lambda e: setCollect(i, e.value))
+                elif 'Dump' in s:
+                    with ui.item_section():
+                        i = idx
+                        ui.number(suffix=' s', value=d, validation={'Dump time must be >=0': lambda value: value is not None and value >= 0}, on_change=lambda e: setDumpTime(i, e.value))
                 with ui.item_section():
                     ui.item_label(f'{sumTime:.2f} s')
 
+def updateAutoItems():
+    global selection, times, collects, dump_times
+    ntclient.publishSelection(list(zip(selection, times, collects, dump_times)))
+    ntclient.waitForUpdate()
+    selection, times, collects, dump_times = [list(t) for t in zip(*ntclient.getSelection())]
+    options = {(auto, time): f'{auto} ({time:.2f} s)' for auto,time in ntclient.getNextAutos()}
+    selection_dropdown.set_options(options)
+    selection_dropdown.set_value('')
+
+def addAutoItem(item: tuple[str, float] | None):
+    if not item:
+        return
+    selection.append(item[0])
+    times.append(item[1])
+    collects.append(False)
+    dump_times.append(0)
+    updateAutoItems()
+    autoList.refresh()
+    trajectoryVisualization.refresh()
+
+def deleteAutoItem():
+    if len(selection) == 0:
+        return
+    selection.pop()
+    times.pop()
+    collects.pop()
+    dump_times.pop()
+    updateAutoItems()
+    autoList.refresh()
+    trajectoryVisualization.refresh()
+    
+def setCollect(idx: int, collect: bool):
+    collects[idx] = collect
+    updateAutoItems()
+    
+def setDumpTime(idx: int, dump_time: float):
+    if dump_time is None:
+        return
+    dump_times[idx] = dump_time
+    updateAutoItems()
+    autoList.refresh()
+
 @ui.refreshable
 def autoSelection():
-    def updateAutoItems():
-        ntclient.publishSelection(list(zip(selection, times)))
-        ntclient.waitForUpdate()
-        options = {(auto, time): f'{auto} ({time:.2f} s)' for auto,time in ntclient.getNextAutos()}
-        selection_dropdown.set_options(options)
-        selection_dropdown.set_value('')
-        autoList.refresh()
-        trajectoryVisualization.refresh()
-
-    def addAutoItem(item: tuple[str, float] | None):
-        if not item:
-            return
-        selection.append(item[0])
-        times.append(item[1])
-        updateAutoItems()
-        
-    def deleteAutoItem():
-        if len(selection) == 0:
-            return
-        selection.pop()
-        times.pop()
-        updateAutoItems()
-
+    global selection_dropdown
     with ui.card():
         ui.label('Auto').classes('text-bold')
         ui.separator()
@@ -66,7 +95,7 @@ field_h = 8.04
 viewTime = 0
 def setViewTime(time):
     global viewTime
-    viewTime = time*sum(times)
+    viewTime = time*(sum(times) + sum(dump_times))
     timeLabel.set_text(f'{viewTime:.1f} s')
     trajectoryVisualization.refresh()
 
@@ -96,25 +125,25 @@ def trajectoryVisualization():
                 </svg>''').classes('w-full h-full bg-transparent')
 
 def connectToSim():
-    global selection, times
+    global selection, times, collects, dump_times
     ntclient.connectToSim()
     selectiontimes = ntclient.getSelection()
     if not selectiontimes:
-        selection, times = [], []
+        selection, times, collects, dump_times = [], [], [], []
     else:
-        selection, times = [list(t) for t in zip(*ntclient.getSelection())]
+        selection, times, collects, dump_times = [list(t) for t in zip(*ntclient.getSelection())]
     autoSelection.refresh()
     autoList.refresh()
     trajectoryVisualization.refresh()
     
 def connectToDS():
-    global selection, times
+    global selection, times, collects, dump_times
     ntclient.connectToDS()
     selectiontimes = ntclient.getSelection()
     if not selectiontimes:
-        selection, times = [], []
+        selection, times, collects, dump_times = [], [], [], []
     else:
-        selection, times = [list(t) for t in zip(*ntclient.getSelection())]
+        selection, times, collects, dump_times = [list(t) for t in zip(*ntclient.getSelection())]
     autoSelection.refresh()
     autoList.refresh()
     trajectoryVisualization.refresh()

@@ -27,7 +27,7 @@ def connectToDS():
     inst.startDSClient()
     time.sleep(0.2)
 
-def publishSelection(selection: list[tuple[str, float]]):
+def publishSelection(selection: list[tuple[str, float, bool, float]]):
     if len(selection) == 0:
         selectionEntry.set('')
         selectionTimesEntry.set([])
@@ -36,13 +36,19 @@ def publishSelection(selection: list[tuple[str, float]]):
     toPublish = selection[0][0]
     times = [selection[0][1]]
     prevPoint = selection[0][0]
-    for s, t in selection[1:]:
+    for s, t, c, d in selection[1:]:
         times.append(t)
         if s.startswith('Collect'):
             toPublish += ';'+s
         else:
             toPublish += f';{prevPoint} to {s}'
             prevPoint = s
+
+        if c:
+            toPublish += '!'
+            
+        if 'Dump' in s:
+            toPublish += f'={d}'
             
     selectionEntry.set(toPublish)
     selectionTimesEntry.set(times) # type: ignore
@@ -50,20 +56,37 @@ def publishSelection(selection: list[tuple[str, float]]):
 def getStartOptions() -> list[str]:
     return startOptionsSub.get()
 
-def getSelection() -> list[tuple[str, float]]:
+def getSelection() -> list[tuple[str, float, bool, float]]:
     raw = selectionEntry.get()
     if raw == '':
         return []
     splits = raw.split(';')
     selection = []
+    collects = []
+    dump_times = []
     for s in splits:
         if s.startswith('Collect'):
-            selection.append(s)
-            continue
-        parts = s.split(' to ')
-        selection.append(parts[-1])
+            if s.endswith('!'):
+                selection.append(s[:-1])
+                collects.append(True)
+            else:
+                selection.append(s)
+                collects.append(False)
+            dump_times.append(0)
+        elif 'to Dump' in s:
+            dump_time = float(s.split('=')[1])
+            dump_times.append(dump_time)
+            parts = s.split('=')[0].split(' to ')
+            selection.append(parts[-1])
+            collects.append(False)
+        else:
+            parts = s.split(' to ')
+            selection.append(parts[-1])
+            dump_times.append(0)
+            collects.append(False)
+        
     times = selectionTimesEntry.get()
-    return list(zip(selection, times))
+    return list(zip(selection, times, collects, dump_times))
 
 def waitForUpdate():
     global prevTimestamp
