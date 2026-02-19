@@ -12,6 +12,7 @@ selectionEntry = inst.getStringTopic('Autos/Selection').getEntry('')
 selectionTimesEntry = inst.getDoubleArrayTopic('Autos/Selection Timestamps').getEntry([])
 trajectorySub = inst.getStructArrayTopic('Autos/Trajectory', Translation2d).subscribe([])
 trajectoryTimesSub = inst.getDoubleArrayTopic('Autos/Trajectory Timestamps').subscribe([])
+dumpAtStartEntry = inst.getBooleanTopic('Autos/Dump At Start').getEntry(False)
 
 prevTimestamp = 0
 
@@ -52,6 +53,12 @@ def publishSelection(selection: list[tuple[str, float, bool, float]]):
             
     selectionEntry.set(toPublish)
     selectionTimesEntry.set(times) # type: ignore
+
+def publishDumpAtStart(dump: bool):
+    dumpAtStartEntry.set(dump)
+
+def getDumpAtStart() -> bool:
+    return dumpAtStartEntry.get()
 
 def getStartOptions() -> list[str]:
     return startOptionsSub.get()

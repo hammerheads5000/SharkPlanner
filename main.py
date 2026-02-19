@@ -10,7 +10,9 @@ dump_times: list[float] = []
 @ui.refreshable
 def autoList():
     with ui.list().classes('w-full'):
-        sumTime = 0
+        ui.checkbox('Dump at start', value=ntclient.getDumpAtStart(), on_change=lambda e: ntclient.publishDumpAtStart(e.value))
+
+        sumTime = ntclient.getDumpAtStart()*2
         for s, t, c, d, idx in list(zip(selection, times, collects, dump_times, range(len(selection)))):
             sumTime += t + d
             with ui.item():
@@ -18,12 +20,10 @@ def autoList():
                     ui.item_label(s)
                 if s.startswith('Collect'):
                     with ui.item_section():
-                        i = idx
-                        ui.checkbox(value=c, on_change=lambda e: setCollect(i, e.value))
+                        ui.checkbox(value=c, on_change=collectLambda(idx))
                 elif 'Dump' in s:
                     with ui.item_section():
-                        i = idx
-                        ui.number(suffix=' s', value=d, validation={'Dump time must be >=0': lambda value: value is not None and value >= 0}, on_change=lambda e: setDumpTime(i, e.value))
+                        ui.number(suffix=' s', value=d, validation={'Dump time must be >=0': lambda value: value is not None and value >= 0}, on_change=dumpTimeLambda(idx))
                 with ui.item_section():
                     ui.item_label(f'{sumTime:.2f} s')
 
@@ -61,6 +61,9 @@ def deleteAutoItem():
 def setCollect(idx: int, collect: bool):
     collects[idx] = collect
     updateAutoItems()
+
+def collectLambda(idx: int):
+    return lambda e: setCollect(idx, e.value) 
     
 def setDumpTime(idx: int, dump_time: float):
     if dump_time is None:
@@ -68,6 +71,9 @@ def setDumpTime(idx: int, dump_time: float):
     dump_times[idx] = dump_time
     updateAutoItems()
     autoList.refresh()
+
+def dumpTimeLambda(idx: int):
+    return lambda e: setDumpTime(idx, e.value)
 
 @ui.refreshable
 def autoSelection():
@@ -95,12 +101,12 @@ field_h = 8.04
 viewTime = 0
 def setViewTime(time):
     global viewTime
-    viewTime = time*(sum(times) + sum(dump_times))
+    viewTime = time*(sum(times) + sum(dump_times) + ntclient.getDumpAtStart()*2)
     timeLabel.set_text(f'{viewTime:.1f} s')
     trajectoryVisualization.refresh()
 
 def viewer():
-    with ui.image(source='rebuilt field.png').classes('grow'):
+    with ui.image(source='C:\\Users\\Hammerheads\\Desktop\\SharkPlanner\\rebuilt field.png').classes('grow'):
         trajectoryVisualization()
     
 @ui.refreshable
