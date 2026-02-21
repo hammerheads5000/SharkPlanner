@@ -80,7 +80,7 @@ def getSelection() -> list[tuple[str, float, bool, float]]:
                 selection.append(s)
                 collects.append(False)
             dump_times.append(0)
-        elif 'to Dump' in s:
+        elif 'to Dump' in s or 'to Bump Dump' in s:
             dump_time = float(s.split('=')[1])
             dump_times.append(dump_time)
             parts = s.split('=')[0].split(' to ')
