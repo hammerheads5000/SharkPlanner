@@ -101,8 +101,8 @@ field_h = 8.04
 viewTime = 0
 def setViewTime(time):
     global viewTime
-    viewTime = time*(sum(times) + sum(dump_times) + ntclient.getDumpAtStart()*2)
-    timeLabel.set_text(f'{viewTime:.1f} s')
+    viewTime = time*(sum(times) + sum(dump_times))
+    timeLabel.set_text(f'{viewTime + ntclient.getDumpAtStart()*2:.1f} s')
     trajectoryVisualization.refresh()
 
 def viewer():
