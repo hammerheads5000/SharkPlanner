@@ -1,6 +1,6 @@
 from nicegui import ui
 import ntclient
-import asyncio
+import os
 
 selection: list[str] = []
 times: list[float] = []
@@ -31,7 +31,7 @@ def updateAutoItems():
     global selection, times, collects, dump_times
     ntclient.publishSelection(list(zip(selection, times, collects, dump_times)))
     ntclient.waitForUpdate()
-    selection, times, collects, dump_times = [list(t) for t in zip(*ntclient.getSelection())]
+    loadSelection()
     options = {(auto, time): f'{auto} ({time:.2f} s)' for auto,time in ntclient.getNextAutos()}
     selection_dropdown.set_options(options)
     selection_dropdown.set_value('')
@@ -55,6 +55,7 @@ def deleteAutoItem():
     collects.pop()
     dump_times.pop()
     updateAutoItems()
+    autoSelection.refresh()
     autoList.refresh()
     trajectoryVisualization.refresh()
     
@@ -106,7 +107,8 @@ def setViewTime(time):
     trajectoryVisualization.refresh()
 
 def viewer():
-    with ui.image(source='C:\\Users\\Hammerheads\\Desktop\\SharkPlanner\\rebuilt field.png').classes('grow'):
+    dirpath = os.path.dirname(os.path.abspath(__file__))
+    with ui.image(source=f'{dirpath}/rebuilt field.png').classes('grow'):
         trajectoryVisualization()
     
 @ui.refreshable
@@ -130,26 +132,26 @@ def trajectoryVisualization():
                     <circle {getPointFromTime(traj)} r="18" fill="blue" transform="scale({field_h/field_w},1)"/>
                 </svg>''').classes('w-full h-full bg-transparent')
 
-def connectToSim():
+def loadSelection():
     global selection, times, collects, dump_times
-    ntclient.connectToSim()
-    selectiontimes = ntclient.getSelection()
-    if not selectiontimes:
+    full_selection = ntclient.getSelection()
+    if not full_selection:
         selection, times, collects, dump_times = [], [], [], []
     else:
         selection, times, collects, dump_times = [list(t) for t in zip(*ntclient.getSelection())]
+
+def connectToSim():
+    ntclient.restartClient()
+    ntclient.connectToSim()
+    loadSelection()
     autoSelection.refresh()
     autoList.refresh()
     trajectoryVisualization.refresh()
     
 def connectToDS():
-    global selection, times, collects, dump_times
+    ntclient.restartClient()
     ntclient.connectToDS()
-    selectiontimes = ntclient.getSelection()
-    if not selectiontimes:
-        selection, times, collects, dump_times = [], [], [], []
-    else:
-        selection, times, collects, dump_times = [list(t) for t in zip(*ntclient.getSelection())]
+    loadSelection()
     autoSelection.refresh()
     autoList.refresh()
     trajectoryVisualization.refresh()
@@ -165,5 +167,5 @@ with ui.row(wrap=False).classes('w-full'):
         with ui.row(wrap=False).classes('w-full'):
             timeLabel = ui.label('0.0 s').classes('w-fit text-nowrap')
             timeSlide = ui.slider(min=0, max=1, value=0, step=0.01, on_change=lambda e: setViewTime(e.value)).classes('w-full')
-ntclient.init()
+
 ui.run(dark=True)

@@ -16,17 +16,32 @@ dumpAtStartEntry = inst.getBooleanTopic('Autos/Dump At Start').getEntry(False)
 
 prevTimestamp = 0
 
-def init():
+def startClient():
     inst.startClient4('SharkPlanner')
+
+def restartClient():
+    inst.stopClient()
+    inst.startClient4('SharkPlanner')
+
+def waitForConnection(timeout = 5):
+    start = time.process_time()
+    while not inst.isConnected():
+        time.sleep(0.2)
+        if time.process_time() - start > timeout:
+            print("Connection timed out!")
+            return False
+    time.sleep(0.2)
+    return True
     
+
 def connectToSim():
     inst.setServer('127.0.0.1')
-    time.sleep(0.2)
-    
+    waitForConnection()
+
 def connectToDS():
-    inst.setServerTeam(5000)
+    # inst.setServerTeam(5000)
     inst.startDSClient()
-    time.sleep(0.2)
+    waitForConnection()
 
 def publishSelection(selection: list[tuple[str, float, bool, float]]):
     if len(selection) == 0:
